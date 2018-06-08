@@ -1,0 +1,140 @@
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Venue Routing</title>
+</head>
+<body style="padding-left: 50px; padding-right: 50px; font-family: helvetica; color: gray;">
+  <h1 style="color: gray; margin-bottom: 100px; margin-top: 50px;">Venue Routing Javascript</h1>
+  <div style = "inherit" id="result"></div>
+
+<script>
+
+function Venue(name, latitude, longitude, firstAvailability){
+  this.name = name;
+  this.lat = latitude;
+  this.lon = longitude;
+  this.avails = firstAvailability;  //portrayed as a number from 1 (Jan. 1) to 365 (Dec. 31);
+}
+
+var amherstMA = new Venue("Amherst", 42.373222, -72.519854, [4, 5, 6, 11, 12, 13, 18, 20, 25, 32, 34, 39, 40, 53, 54, 74, 75, 76, 81, 88, 89, 90, 95, 96, 97, 102, 103, 109, 110, 111, 116, 117, 118, 249, 250, 251, 256, 257, 258, 263, 264, 265]);
+var berkeleyCA = new Venue("Berkeley", 37.871593, -122.272747, [116]);
+var champaignIL = new Venue("Champaign", 40.116420, -88.243383, [60, 61, 62, 67, 88, 89, 90, 102, 103, 104, 110, 116]);
+var fargoND = new Venue("Fargo", 46.877186, -96.789803, [11, 12, 13, 18, 26, 27, 32, 88, 102, 103, 109, 110, 111, 116, 117, 118, 242, 243, 244, 249, 250, 251, 256, 257, 258, 263, 264, 265, 270, 271, 272, 277, 278, 279, 284, 285, 286, 291, 292, 293, 298, 299, 300, 305, 306, 307, 312, 319, 320, 321, 333]);
+var greenvilleNC = new Venue("Greenville", 35.612661, -77.366354, [83, 95, 97]);
+var iowaCityIA = new Venue("Iowa City", 41.661128, -91.530168, [104, 118]);
+var laramieWY = new Venue("Laramie", 41.311367, -105.591101, [243]);
+var longBeachCA = new Venue("Long Beach", 33.770050, -118.193739, [5, 6, 103, 104]);
+var mankatoMN = new Venue("Mankato", 44.163578, -93.999400, [4, 5, 6, 11, 12, 13, 19, 20, 81, 82, 83, 88, 89, 90, 109, 110, 111, 249, 250, 251, 256, 257, 258, 263, 264, 265, 270]);
+var missoulaMT = new Venue("Missoula", 46.878718, -113.996586, [53, 61, 88, 89, 102, 103, 116, 117, 118, 242, 249, 256]);
+var normanOK = new Venue("Norman", 35.222567, -97.439478, [88, 89, 90]);
+var omahaNE = new Venue("Omaha", 41.252363, -95.997988, [4, 5, 11, 25, 32, 33, 39, 67, 74, 75, 76, 81, 82, 88, 89, 109, 110, 116, 242, 243, 244, 251, 258, 298, 299, 312, 314, 340, 354, 356, 361, 362, 363]);
+var philadelphiaPA = new Venue("Philadelphia", 39.952584, -75.165222, [95, 96, 97]);
+var portlandMemorialOR = new Venue("Portland - Memorial Coliseum", 45.531959, -122.669514, [4, 5, 6, 18, 32, 33, 67, 81, 88, 89, 90, 102, 116, 256, 257, 258, 263, 264, 265, 270, 271, 272, 277, 278, 279, 284, 285, 286, 291, 298, 299, 300, 305, 306, 307, 312, 313, 314, 319, 320, 321, 333, 334, 335, 340, 341, 342, 347, 348, 349, 354, 355, 356]);
+var portlandModaOR = new Venue("Portland - Moda Center", 45.531860, -122.666819, [25, 34, 81, 277, 278, 284, 285, 286, 340, 341, 342, 347, 348, 349, 354, 355, 356]);
+var masterArray = [amherstMA, berkeleyCA, champaignIL, greenvilleNC, iowaCityIA, fargoND, laramieWY, longBeachCA, mankatoMN, missoulaMT, normanOK, omahaNE, philadelphiaPA, portlandMemorialOR, portlandModaOR];
+
+var min = 50;
+var max = 475;
+var parentRouting = [];
+var childRouting = [];
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
+}
+
+//HAVERSINE FORMULA (AS THE CROW FLIES)
+function asCrowFlies(venue1, venue2) {
+  var R = 6371; // Radius of the earth in kmQQ
+  var dLat = deg2rad(venue2.lat-venue1.lat);
+  var dLon = deg2rad(venue2.lon-venue1.lon); 
+  var a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(deg2rad(venue1.lat)) * Math.cos(deg2rad(venue2.lat)) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2)
+      ; 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c; // Distance in km
+  d = Math.round(d * 0.621371); // Distance in miles, rounded
+  return d;
+}
+//END HAVERSINE FORMULA (AS THE CROW FLIES)
+
+//TURN NUMBER INTO READABLE DATE
+var currentYear = 2017;
+function dateFromDay(year, day){
+  var d = new Date(year, 0);
+  return new Date(d.setDate(day)).toDateString();
+}
+//END TURN NUMBER INTO READABLE DATE
+
+//CREATE NESTED ARRAY OF ROUTING OPTIONS - [[V1, V2,..], [V3, V4,..], [V5, V6,..]]
+function routingOptions(list){
+  for(i = 0; i < list.length; i++){
+    for(j = 0; j < list.length; j++){
+      if(list[i] != list[j]){
+        var distance = asCrowFlies(list[i], list[j]);
+        if(distance >= min && distance <= max){
+          childRouting.push(list[j]);
+        }
+      }
+    }
+    parentRouting.push(childRouting);
+    childRouting = [];
+  }
+}
+//END CREATE NESTED ARRAY OF ROUTING OPTIONS
+
+//WEEKEND MATCHING FUNCTION
+function weekendMatch(venue, list){
+  var content = "";
+  var count = 0;
+  
+  for(i = 0; i < venue.avails.length; i++){
+    for(j = 0; j < list.length; j++){
+      for(k = 0; k < list[j].avails.length; k++){
+        if((venue.avails[i] + 1) == list[j].avails[k]){
+          for(l = (j+1); l < list.length; l++){
+            for(n = 0; n < list[l].avails.length; n++){
+              if((venue.avails[i] - 1) == list[l].avails[n]){
+                content += list[l].name + ' on ' + dateFromDay(currentYear, list[l].avails[n]) + '<br/>' + venue.name + ' on ' + dateFromDay(currentYear, venue.avails[i]) + '<br/>' + list[j].name + ' on ' + dateFromDay(currentYear, list[j].avails[k]) + '<br/><br/>';
+                count++;
+              }
+            }
+          }
+        } else if((venue.avails[i] - 1) == list[j].avails[k]){
+          for(l = (j+1); l < list.length; l++){
+            for(n = 0; n < list[l].avails.length; n++){
+              if((venue.avails[i] + 1) == list[l].avails[n]){
+                content += list[j].name + ' on ' + dateFromDay(currentYear, list[j].avails[k]) + '<br/>' + venue.name + ' on ' + dateFromDay(currentYear, venue.avails[i]) + '<br/>' + list[l].name + ' on ' + dateFromDay(currentYear, list[l].avails[n]) + '<br/><br/>';
+                count++;
+              }
+            }
+          }
+        }
+      } 
+    }
+  }
+  
+  var isAre;
+  var routeGrammar;
+  var messageColor;
+  if(count == 1){isOrAre = 'is'; routeGrammar = 'route';} else {isOrAre = 'are'; routeGrammar = 'routes';}
+  if(count != 0){messageStyle = '<h4 style = "color:red; border-bottom: 2px dotted gray">There '} else {messageStyle = '<h4 style = "border-bottom: 2px dotted gray">There '}
+
+  document.getElementById('result').innerHTML += (content + messageStyle + isOrAre + ' ' + count + ' full weekend ' + routeGrammar + ' with ' + venue.name + '.</h4><br/><br/><br/>');
+}
+//END WEEKEND MATCHING FUNCTION
+
+//CALLING THE FUNCTION
+routingOptions(masterArray);//creates parentRouting array for code below
+
+var q = 0;
+while(q < masterArray.length){
+  weekendMatch(masterArray[q], parentRouting[q]);
+  q++;
+}
+
+</script>
+	
+</body>
+</html>
